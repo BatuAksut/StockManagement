@@ -1,0 +1,42 @@
+﻿@model Product
+
+<form asp-controller="Product" asp-action="Create" method="post">
+
+	<div class="border p-3 mt-4">
+		<div class="row pb-2">
+			<h2 class="text-body">Create Product</h2>
+			<hr />
+		</div>
+		<span asp-validation-summary="All" class="text-danger"></span>
+		<div class="mb-3 row p-1">
+			<label asp-for="ProductName" class="p-0"></label>
+			<input asp-for="ProductName" class="form-control" />
+			<span asp-validation-for="ProductName" class="text-danger"></span>
+		</div>
+		<div class="mb-3 row p-1">
+			<label asp-for="UnitsInStock" class="p-0"></label>
+			<input asp-for="UnitsInStock" class="form-control" />
+			<span asp-validation-for="UnitsInStock" class="text-danger"></span>
+		</div>
+		<div class="mb-3 row p-1">
+			<label asp-for="CategoryId" class="p-0"></label>
+			<select asp-for="CategoryId" asp-items="ViewBag.CategoryList" class="form-control">
+				<option value="">Select a category</option> 
+			</select>
+			<span asp-validation-for="CategoryId" class="text-danger"></span>
+		</div>
+
+
+
+		<div class="row">
+			<div class="col-6 col-md-3"><button type="submit" class="btn btn-primary form-control">Create</button></div>
+			<div class="col-6 col-md-3">
+				<a asp-controller="Product" asp-action="Index" class="btn btn-secondary border form-control">
+					Back to list
+				</a>
+			</div>
+		</div>
+
+
+	</div>
+</form>
