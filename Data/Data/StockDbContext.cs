@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using StockManagement.Models;
 
+
 namespace StockManagement.Data
 {
     public class StockDbContext:DbContext

@@ -1,8 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using StockManagement.Data;
 using StockManagement.Models;
-using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace StockManagement.Controllers
 {
@@ -136,6 +137,22 @@ namespace StockManagement.Controllers
 
 
 
+        }
+
+        public IActionResult StockChart()
+        {
+            var salesData = _db.Products
+                .Select(p => new
+                {
+                    ProductName = p.ProductName,
+                    UnitsInStock = p.UnitsInStock
+                })
+                .ToList();
+
+            // Veriyi JSON formatında View'e gönderiyoruz
+            ViewBag.StockData = JsonSerializer.Serialize(salesData);
+
+            return View();
         }
     }
 }
