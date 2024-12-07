@@ -1,3 +1,5 @@
+using Data.Repository.Abstract;
+using Data.Repository.Concrete;
 using Microsoft.EntityFrameworkCore;
 using StockManagement.Data;
 
@@ -9,6 +11,7 @@ builder.Services.AddDbContext<StockDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default"));
 });
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 var app = builder.Build();
 
 
@@ -29,6 +32,6 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{area=User}/{controller=Home}/{action=Index}/{id?}");
 
 app.Run();

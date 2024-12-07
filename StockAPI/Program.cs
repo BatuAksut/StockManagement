@@ -1,3 +1,5 @@
+using Data.Repository.Abstract;
+using Data.Repository.Concrete;
 using Microsoft.EntityFrameworkCore;
 using StockManagement.Data;
 
@@ -12,6 +14,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<StockDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default"))
 );
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

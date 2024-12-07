@@ -1,24 +1,29 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Data.Repository.Abstract;
+using Data.Repository.Concrete;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using StockManagement.Data;
 using StockManagement.Models;
 using System.Text.Json;
 
-namespace StockManagement.Controllers
+namespace StockManagement.Areas.Admin.Controllers
 {
+    [Area("Admin")]
     public class ProductController : Controller
     {
+        private readonly IUnitOfWork _unitOfWork;
         private readonly StockDbContext _db;
-        public ProductController(StockDbContext db)
+        public ProductController(IUnitOfWork unitOfWork, StockDbContext db)
         {
+            _unitOfWork = unitOfWork;
             _db = db;
         }
         public IActionResult Index()
         {
             ViewBag.CategoryList = new SelectList(_db.Categories, "CategoryId", "CategoryName");
             var products = _db.Products
-        .Join(_db.Categories, 
+        .Join(_db.Categories,
               product => product.CategoryId,
               category => category.CategoryId,
               (product, category) => new ProductViewModel
@@ -43,19 +48,24 @@ namespace StockManagement.Controllers
 
             if (ModelState.IsValid)
             {
-                _db.Products.Add(product);
-                _db.SaveChanges();
+                _unitOfWork.ProductRepository.Add(product);
+                _unitOfWork.Save();
                 TempData["success"] = "Product created";
                 return RedirectToAction("Index");
             }
-            
+
             ViewBag.CategoryList = new SelectList(_db.Categories, "CategoryId", "CategoryName");
             return View();
         }
 
         public IActionResult Edit(int? id)
         {
-            var product = _db.Products.Find(id);
+            if (id == null || id == 0)
+            {
+                return NotFound();
+            }
+            Console.WriteLine($"Gelen ID: {id}");
+            var product = _unitOfWork.ProductRepository.Get(c => c.ProductId == id);
             if (product == null)
             {
                 return NotFound();
@@ -87,8 +97,8 @@ namespace StockManagement.Controllers
 
             if (ModelState.IsValid)
             {
-                _db.Products.Update(product);
-                _db.SaveChanges();
+                _unitOfWork.ProductRepository.Update(product);
+                _unitOfWork.Save();
                 TempData["success"] = "Product edited";
                 return RedirectToAction("Index");
             }
@@ -124,14 +134,14 @@ namespace StockManagement.Controllers
         [HttpPost, ActionName("Delete")]
         public IActionResult DeletePOST(int? id)
         {
-            Product product = _db.Products.Find(id);
+            Product product = _unitOfWork.ProductRepository.Get(c => c.ProductId == id);
             if (product == null)
             {
                 return NotFound();
             }
 
-            _db.Products.Remove(product);
-            _db.SaveChanges();
+            _unitOfWork.ProductRepository.Delete(product);
+            _unitOfWork.Save();
             TempData["success"] = "Product deleted";
             return RedirectToAction("Index");
 
@@ -144,8 +154,8 @@ namespace StockManagement.Controllers
             var salesData = _db.Products
                 .Select(p => new
                 {
-                    ProductName = p.ProductName,
-                    UnitsInStock = p.UnitsInStock
+                    p.ProductName,
+                    p.UnitsInStock
                 })
                 .ToList();
 
