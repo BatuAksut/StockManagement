@@ -14,10 +14,12 @@ namespace StockManagement.Areas.Admin.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly StockDbContext _db;
-        public ProductController(IUnitOfWork unitOfWork, StockDbContext db)
+        private readonly ILogger<ProductController> _logger;
+        public ProductController(IUnitOfWork unitOfWork, StockDbContext db, ILogger<ProductController> logger)
         {
             _unitOfWork = unitOfWork;
             _db = db;
+            _logger = logger;
         }
         public IActionResult Index()
         {
@@ -39,17 +41,23 @@ namespace StockManagement.Areas.Admin.Controllers
         }
         public IActionResult Create()
         {
+            _logger.LogInformation("Product create page opened");
             ViewBag.CategoryList = new SelectList(_db.Categories, "CategoryId", "CategoryName");
             return View();
         }
         [HttpPost]
         public IActionResult Create(Product product)
         {
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid model state: {Errors}", JsonSerializer.Serialize(ModelState));
+            }
 
             if (ModelState.IsValid)
             {
                 _unitOfWork.ProductRepository.Add(product);
                 _unitOfWork.Save();
+                _logger.LogInformation("Product created: {ProductName}", product.ProductName);
                 TempData["success"] = "Product created";
                 return RedirectToAction("Index");
             }
@@ -62,9 +70,10 @@ namespace StockManagement.Areas.Admin.Controllers
         {
             if (id == null || id == 0)
             {
+                _logger.LogWarning("Invalid Id for edit: {Id}", id);
                 return NotFound();
             }
-            Console.WriteLine($"Gelen ID: {id}");
+            
             var product = _unitOfWork.ProductRepository.Get(c => c.ProductId == id);
             if (product == null)
             {
@@ -87,18 +96,23 @@ namespace StockManagement.Areas.Admin.Controllers
                 CategoryName = _db.Categories.FirstOrDefault(c => c.CategoryId == product.CategoryId)?.CategoryName,
                 Categories = categories
             };
-
+            _logger.LogInformation("Edit page opened: {ProductName}", product.ProductName);
             return View(viewModel);
         }
 
         [HttpPost]
         public IActionResult Edit(Product product)
         {
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid model state: {Errors}", JsonSerializer.Serialize(ModelState));
+            }
 
             if (ModelState.IsValid)
             {
                 _unitOfWork.ProductRepository.Update(product);
                 _unitOfWork.Save();
+                _logger.LogInformation("Product edited: {ProductName}", product.ProductName);
                 TempData["success"] = "Product edited";
                 return RedirectToAction("Index");
             }
@@ -124,9 +138,10 @@ namespace StockManagement.Areas.Admin.Controllers
 
             if (product == null)
             {
+                _logger.LogWarning("Product not found for delete: {ProductId}", id);
                 return NotFound();
             }
-
+            _logger.LogInformation("Product delete page opened: {ProductName}", product.ProductName);
             return View(product);
         }
 
@@ -137,11 +152,13 @@ namespace StockManagement.Areas.Admin.Controllers
             Product product = _unitOfWork.ProductRepository.Get(c => c.ProductId == id);
             if (product == null)
             {
+                _logger.LogError("Invalid Id for delete: {ProductId}", id);
                 return NotFound();
             }
 
             _unitOfWork.ProductRepository.Delete(product);
             _unitOfWork.Save();
+            _logger.LogInformation("Product deleted: {ProductName}", product.ProductName);
             TempData["success"] = "Product deleted";
             return RedirectToAction("Index");
 
@@ -151,7 +168,8 @@ namespace StockManagement.Areas.Admin.Controllers
 
         public IActionResult StockChart()
         {
-            var salesData = _db.Products
+          
+            var productSalesData = _db.Products
                 .Select(p => new
                 {
                     p.ProductName,
@@ -159,10 +177,43 @@ namespace StockManagement.Areas.Admin.Controllers
                 })
                 .ToList();
 
-            // Veriyi JSON formatında View'e gönderiyoruz
-            ViewBag.StockData = JsonSerializer.Serialize(salesData);
+      
+            var categorySalesData = _db.Products
+                .GroupBy(p => p.CategoryId)
+                .Select(g => new
+                {
+                    CategoryName = _db.Categories.FirstOrDefault(c => c.CategoryId == g.Key).CategoryName,
+                    TotalUnitsInStock = g.Sum(p => p.UnitsInStock)
+                })
+                .ToList();
+
+       
+            ViewBag.ProductStockData = JsonSerializer.Serialize(productSalesData);
+            ViewBag.CategoryStockData = JsonSerializer.Serialize(categorySalesData);
 
             return View();
         }
+
+
+        public IActionResult LowStockAlert()
+        {
+            var lowStockProducts = _db.Products
+                .Where(p => p.UnitsInStock <= 10)
+                .Join(_db.Categories,
+                      product => product.CategoryId,
+                      category => category.CategoryId,
+                      (product, category) => new ProductViewModel
+                      {
+                          ProductId = product.ProductId,
+                          ProductName = product.ProductName,
+                          UnitsInStock = product.UnitsInStock,
+                          CategoryId = product.CategoryId,
+                          CategoryName = category.CategoryName
+                      })
+                .ToList();
+
+            return View(lowStockProducts);
+        }
+
     }
 }

@@ -13,5 +13,6 @@ namespace StockManagement.Models
 
         [ForeignKey("CategoryId")]
         public int CategoryId { get; set; }
+
     }
 }

@@ -1,0 +1,34 @@
+﻿@model List<StockManagement.Models.ProductViewModel>
+
+@{
+    ViewData["Title"] = "Low Stock Alert";
+}
+
+<h1>Low Stock Alert</h1>
+
+@if (Model.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Units in Stock</th>
+                <th>Category</th> 
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in Model)
+            {
+                <tr>
+                    <td>@product.ProductName</td>
+                    <td>@product.UnitsInStock</td>
+                    <td>@product.CategoryName</td> 
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No products are running low on stock.</p>
+}

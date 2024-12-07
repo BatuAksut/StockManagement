@@ -1,9 +1,17 @@
 using Data.Repository.Abstract;
 using Data.Repository.Concrete;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using StockManagement.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console() 
+    .WriteTo.File("logs/myapp.txt", rollingInterval: RollingInterval.Day) 
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
