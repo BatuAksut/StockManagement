@@ -3,6 +3,7 @@ using Data.Repository.Concrete;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using StockManagement.Data;
 using StockManagement.Models;
 using System.Text.Json;
@@ -15,28 +16,47 @@ namespace StockManagement.Areas.Admin.Controllers
         private readonly IUnitOfWork _unitOfWork;
         private readonly StockDbContext _db;
         private readonly ILogger<ProductController> _logger;
-        public ProductController(IUnitOfWork unitOfWork, StockDbContext db, ILogger<ProductController> logger)
+        private readonly IMemoryCache _memoryCache;
+
+        private readonly string cacheKey = "productsCacheKey";
+        public ProductController(IUnitOfWork unitOfWork, StockDbContext db, ILogger<ProductController> logger,IMemoryCache memoryCache)
         {
             _unitOfWork = unitOfWork;
             _db = db;
             _logger = logger;
+            _memoryCache = memoryCache;
         }
         public IActionResult Index()
         {
-            ViewBag.CategoryList = new SelectList(_db.Categories, "CategoryId", "CategoryName");
-            var products = _db.Products
-        .Join(_db.Categories,
-              product => product.CategoryId,
-              category => category.CategoryId,
-              (product, category) => new ProductViewModel
-              {
-                  ProductId = product.ProductId,
-                  ProductName = product.ProductName,
-                  UnitsInStock = product.UnitsInStock,
-                  CategoryId = product.CategoryId,
-                  CategoryName = category.CategoryName
-              })
-        .ToList();
+            if(_memoryCache.TryGetValue(cacheKey, out var products))
+            {
+                _logger.Log(LogLevel.Information, "Products found in cache");
+            }
+            else
+            {
+                _logger.Log(LogLevel.Information, "Products not found in cache");
+                ViewBag.CategoryList = new SelectList(_db.Categories, "CategoryId", "CategoryName");
+                products = _db.Products
+            .Join(_db.Categories,
+                  product => product.CategoryId,
+                  category => category.CategoryId,
+                  (product, category) => new ProductViewModel
+                  {
+                      ProductId = product.ProductId,
+                      ProductName = product.ProductName,
+                      UnitsInStock = product.UnitsInStock,
+                      CategoryId = product.CategoryId,
+                      CategoryName = category.CategoryName
+                  })
+            .ToList();
+                var cacheEntryOptions = new MemoryCacheEntryOptions().
+                    SetSlidingExpiration(TimeSpan.FromSeconds(45)).
+                    SetAbsoluteExpiration(TimeSpan.FromSeconds(3600)).
+                    SetPriority(CacheItemPriority.Normal);
+
+                _memoryCache.Set(cacheKey, products,cacheEntryOptions);
+                
+            }
             return View(products);
         }
         public IActionResult Create()
@@ -57,6 +77,7 @@ namespace StockManagement.Areas.Admin.Controllers
             {
                 _unitOfWork.ProductRepository.Add(product);
                 _unitOfWork.Save();
+                _memoryCache.Remove(cacheKey);
                 _logger.LogInformation("Product created: {ProductName}", product.ProductName);
                 TempData["success"] = "Product created";
                 return RedirectToAction("Index");
@@ -112,6 +133,7 @@ namespace StockManagement.Areas.Admin.Controllers
             {
                 _unitOfWork.ProductRepository.Update(product);
                 _unitOfWork.Save();
+                _memoryCache.Remove(cacheKey);
                 _logger.LogInformation("Product edited: {ProductName}", product.ProductName);
                 TempData["success"] = "Product edited";
                 return RedirectToAction("Index");
@@ -158,6 +180,7 @@ namespace StockManagement.Areas.Admin.Controllers
 
             _unitOfWork.ProductRepository.Delete(product);
             _unitOfWork.Save();
+            _memoryCache.Remove(cacheKey);
             _logger.LogInformation("Product deleted: {ProductName}", product.ProductName);
             TempData["success"] = "Product deleted";
             return RedirectToAction("Index");
