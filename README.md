@@ -45,5 +45,5 @@ This project is a **Stock Management System** built with **ASP.NET Core MVC** an
 
  **Clone the repository**:  
    ```bash
-   git clone https://github.com/yourusername/stock-management.git
+   git clone https://github.com/batuaksut/stock-management.git
    cd stock-management
